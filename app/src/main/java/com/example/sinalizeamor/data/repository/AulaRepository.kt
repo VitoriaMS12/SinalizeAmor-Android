@@ -5,7 +5,7 @@ import com.example.sinalizeamor.RetrofitClient
 
 class AulaRepository {
 
-    suspend fun buscarAulas(idModulo: Int): AulaResponse {
-        return RetrofitClient.api.buscarAulas(idModulo)
+    suspend fun buscarAulas(idModulo: Int, token: String?): AulaResponse {
+        return RetrofitClient.api.buscarAulas(idModulo, token)
     }
 }

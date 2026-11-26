@@ -1,6 +1,7 @@
 package com.example.sinalizeamor.ui.viewmodel
 
 import android.content.Context
+import android.widget.Toast
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,7 +34,10 @@ data class ComunidadeUiState(
     val publicando: Boolean = false,
     val mensagemPublicacao: String? = null,
     val publicacaoConcluida: Boolean = false,
-    val imagemNovaPublicacao: Uri? = null
+    val imagemNovaPublicacao: Uri? = null,
+    val respondendoComentario: Int? = null,
+    val textoResposta: String = "",
+    val enviandoResposta: Boolean = false
 )
 
 data class ExclusaoPublicacaoResponse(
@@ -71,6 +75,12 @@ class ComunidadeViewModel : ViewModel() {
                     carregando = false,
                     publicacoes = resposta.publicacoes
                 )
+
+                // Atualiza também os comentários que estão abertos,
+                // para mostrar fotos e nomes novos dos usuários.
+                estado.comentariosExpandidos.forEach { idPost ->
+                    carregarComentarios(context, idPost)
+                }
 
             } catch (e: Exception) {
                 Log.e("ComunidadeDebug", "Erro ao carregar publicações", e)
@@ -292,7 +302,7 @@ class ComunidadeViewModel : ViewModel() {
         val texto = estado.textosComentario[idPost]?.trim().orEmpty()
 
         if (texto.isBlank()) {
-            estado = estado.copy(mensagem = "Digite um comentário.")
+            Toast.makeText(context, "Digite um comentário.", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -342,6 +352,111 @@ class ComunidadeViewModel : ViewModel() {
                 estado = estado.copy(
                     enviandoComentario = estado.enviandoComentario - idPost
                 )
+            }
+        }
+    }
+
+    // ---------- Respostas aos comentários ----------
+    fun iniciarResposta(idComentario: Int) {
+        estado = estado.copy(
+            respondendoComentario = idComentario,
+            textoResposta = ""
+        )
+    }
+
+    fun cancelarResposta() {
+        estado = estado.copy(
+            respondendoComentario = null,
+            textoResposta = ""
+        )
+    }
+
+    fun atualizarTextoResposta(texto: String) {
+        estado = estado.copy(textoResposta = texto)
+    }
+
+    fun enviarResposta(context: Context, idPost: Int, idComentario: Int) {
+        val texto = estado.textoResposta.trim()
+
+        if (texto.isBlank()) {
+            Toast.makeText(context, "Digite uma resposta.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (estado.enviandoResposta) return
+
+        viewModelScope.launch {
+            estado = estado.copy(enviandoResposta = true)
+
+            try {
+                val token = TokenManager.obterToken(context)
+
+                if (token.isNullOrBlank()) {
+                    Toast.makeText(
+                        context,
+                        "Sua sessão expirou. Entre novamente.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+
+                val resposta = RetrofitClient.api.responderComentario(
+                    token = token,
+                    idComentario = idComentario,
+                    resposta = texto
+                )
+
+                if (resposta.sucesso) {
+                    estado = estado.copy(
+                        respondendoComentario = null,
+                        textoResposta = ""
+                    )
+                    carregarComentarios(context, idPost)
+                } else {
+                    Toast.makeText(context, resposta.mensagem, Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Log.e("RespostaDebug", "Erro ao enviar resposta", e)
+                Toast.makeText(
+                    context,
+                    "Não foi possível enviar a resposta.",
+                    Toast.LENGTH_LONG
+                ).show()
+            } finally {
+                estado = estado.copy(enviandoResposta = false)
+            }
+        }
+    }
+
+    // ---------- Denúncia de publicações ----------
+    fun denunciarPublicacao(context: Context, idPost: Int, motivo: String) {
+        viewModelScope.launch {
+            try {
+                val token = TokenManager.obterToken(context)
+
+                if (token.isNullOrBlank()) {
+                    Toast.makeText(
+                        context,
+                        "Sua sessão expirou. Entre novamente.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    return@launch
+                }
+
+                val resposta = RetrofitClient.api.denunciarPublicacao(
+                    token = token,
+                    idPost = idPost,
+                    motivo = motivo.trim()
+                )
+
+                Toast.makeText(context, resposta.mensagem, Toast.LENGTH_LONG).show()
+            } catch (e: Exception) {
+                Log.e("DenunciaDebug", "Erro ao denunciar publicação", e)
+                Toast.makeText(
+                    context,
+                    "Não foi possível enviar a denúncia.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
         }
     }

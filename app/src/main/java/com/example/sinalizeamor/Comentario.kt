@@ -36,5 +36,31 @@ data class Comentario(
     val username: String,
 
     @SerializedName("foto_perfil")
+    val fotoPerfil: String?,
+
+    // Respostas feitas a este comentário.
+    val respostas: List<RespostaComentario>? = emptyList()
+)
+
+data class RespostaComentario(
+    @SerializedName("id_resposta")
+    val idResposta: Int,
+
+    @SerializedName("id_comentario")
+    val idComentario: Int,
+
+    @SerializedName("id_usuario")
+    val idUsuario: Int,
+
+    val resposta: String,
+
+    @SerializedName("data_resposta")
+    val dataResposta: String,
+
+    val nome: String,
+    val sobrenome: String,
+    val username: String,
+
+    @SerializedName("foto_perfil")
     val fotoPerfil: String?
 )

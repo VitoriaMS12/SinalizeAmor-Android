@@ -51,7 +51,7 @@ fun TelaAulas(
     val contexto = LocalContext.current
 
     LaunchedEffect(idModulo) {
-        viewModel.carregarAulas(idModulo)
+        viewModel.carregarAulas(idModulo, TokenManager.obterToken(contexto))
     }
 
     // Agora toda a tela está dentro da mesma lista rolável.
@@ -169,7 +169,7 @@ fun TelaAulas(
                             text = if (carregando) {
                                 "Carregando aulas..."
                             } else {
-                                "${aulas.size} aulas disponíveis"
+                                "${aulas.size} aulas • ${aulas.count { it.concluida == 1 }} concluídas"
                             },
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
@@ -315,6 +315,17 @@ fun TelaAulas(
                                     color = CoresSinalizeAmor.Marrom,
                                     lineHeight = 25.sp
                                 )
+
+                                if (aula.concluida == 1) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Text(
+                                        text = "✔ Concluída",
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = androidx.compose.ui.graphics.Color(0xFF2E7D32)
+                                    )
+                                }
                             }
                         }
 
@@ -364,6 +375,47 @@ fun TelaAulas(
                                     )
                                 }
                             }
+
+                        // Marcar a aula como concluída
+                        if (aula.concluida != 1) {
+                            Button(
+                                onClick = {
+                                    viewModel.concluirAula(
+                                        TokenManager.obterToken(contexto),
+                                        aula.id_aula
+                                    )
+                                },
+                                enabled = viewModel.aulaConcluindo == null,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = CoresSinalizeAmor.Marrom
+                                )
+                            ) {
+                                Text(
+                                    text = if (viewModel.aulaConcluindo == aula.id_aula) {
+                                        "Salvando..."
+                                    } else {
+                                        "✔  Marcar como concluída"
+                                    },
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = CoresSinalizeAmor.Creme
+                                )
+                            }
+
+                            viewModel.erroConclusao
+                                ?.takeIf { it.first == aula.id_aula }
+                                ?.let { erro ->
+                                    Text(
+                                        text = erro.second,
+                                        fontSize = 13.sp,
+                                        color = androidx.compose.ui.graphics.Color(0xFFB3261E)
+                                    )
+                                }
+                        }
 
                         // Apostilas em PDF
                         aula.materiais
@@ -415,7 +467,7 @@ private fun abrirLink(
     ) {
         endereco
     } else {
-        "https://192.168.1.5/tcc%20(2)/tcc/" +
+        Config.BASE_HTTPS + Config.PASTA_SITE +
                 endereco.trimStart('/')
     }
 

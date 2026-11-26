@@ -84,6 +84,7 @@ private val TextoPrincipal = Color(0xFF555555)
 private val TextoSecundario = Color(0xFF777777)
 
 private val BordaSuave = Color(0xFFD7D7D7)
+private val AzulEscuroResposta = Color(0xFF397F9B)
 private val Branco = Color(0xFFFFFFFF)
 private val FundoCartao = Color(0xFFFFFDFB)
 
@@ -103,7 +104,7 @@ private fun FotoPerfilComunidade(
     tamanho: Int = 48
 ) {
     val baseUrl =
-        "http://192.168.1.5/tcc%20(2)/tcc/uploads/perfils/"
+        Config.BASE_HTTP + Config.PASTA_SITE + "uploads/perfils/"
 
     val urlFoto = fotoPerfil
         ?.takeIf { it.isNotBlank() }
@@ -358,8 +359,15 @@ fun TelaComunidade(
     val estado = viewModel.estado
     val context = LocalContext.current
     var mostrarFormulario by remember { mutableStateOf(false) }
+
+    // Botão voltar do celular fecha o formulário de nova publicação.
+    androidx.activity.compose.BackHandler(enabled = mostrarFormulario) {
+        mostrarFormulario = false
+    }
     val estadoRolagem = rememberLazyListState()
     var publicacaoParaExcluir by remember { mutableStateOf<Int?>(null) }
+    var publicacaoParaDenunciar by remember { mutableStateOf<Int?>(null) }
+    var motivoDenuncia by remember { mutableStateOf("") }
     val idUsuarioLogado = TokenManager.obterIdUsuario(context)
     Log.d("ComunidadeDebug", "ID do usuário logado: $idUsuarioLogado")
 
@@ -747,6 +755,34 @@ fun TelaComunidade(
                                         }
                                     }
 
+                                    // Denúncia: disponível para publicações de outros usuários
+                                    if (publicacao.idUsuario != idUsuarioLogado) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 4.dp),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(
+                                                onClick = {
+                                                    motivoDenuncia = ""
+                                                    publicacaoParaDenunciar = publicacao.idPost
+                                                },
+                                                contentPadding = PaddingValues(
+                                                    horizontal = 8.dp,
+                                                    vertical = 2.dp
+                                                )
+                                            ) {
+                                                Text(
+                                                    text = "⚑ Denunciar",
+                                                    color = TextoSecundario,
+                                                    fontWeight = FontWeight.Medium,
+                                                    fontSize = 12.sp
+                                                )
+                                            }
+                                        }
+                                    }
+
                                     // Ação disponível somente para o autor
                                     if (publicacao.idUsuario == idUsuarioLogado) {
                                         Row(
@@ -794,7 +830,7 @@ fun TelaComunidade(
                                         .forEach { midia ->
 
                                             val urlImagem = remember(midia.arquivo) {
-                                                "http://192.168.1.5/tcc%20(2)/tcc/" +
+                                                Config.BASE_HTTP + Config.PASTA_SITE +
                                                         midia.arquivo.trimStart('/')
                                             }
 
@@ -998,6 +1034,118 @@ fun TelaComunidade(
                                                             fontSize = 14.sp,
                                                             lineHeight = 20.sp
                                                         )
+
+                                                        // Respostas a este comentário
+                                                        (comentario.respostas ?: emptyList()).forEach { resp ->
+                                                            Spacer(modifier = Modifier.height(10.dp))
+
+                                                            Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                verticalAlignment = Alignment.Top
+                                                            ) {
+                                                                FotoPerfilComunidade(
+                                                                    fotoPerfil = resp.fotoPerfil,
+                                                                    nome = resp.nome,
+                                                                    tamanho = 28
+                                                                )
+
+                                                                Column(
+                                                                    modifier = Modifier
+                                                                        .weight(1f)
+                                                                        .padding(start = 8.dp)
+                                                                        .clip(RoundedCornerShape(12.dp))
+                                                                        .background(Color(0xFFFFFDFB))
+                                                                        .padding(10.dp)
+                                                                ) {
+                                                                    Text(
+                                                                        text = "${resp.nome} ${resp.sobrenome}",
+                                                                        color = MarromComunidade,
+                                                                        fontSize = 12.sp,
+                                                                        fontWeight = FontWeight.Bold
+                                                                    )
+
+                                                                    Text(
+                                                                        text = resp.resposta,
+                                                                        color = TextoPrincipal,
+                                                                        fontSize = 13.sp,
+                                                                        lineHeight = 18.sp
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        TextButton(
+                                                            onClick = {
+                                                                if (estado.respondendoComentario == comentario.idComentario) {
+                                                                    viewModel.cancelarResposta()
+                                                                } else {
+                                                                    viewModel.iniciarResposta(comentario.idComentario)
+                                                                }
+                                                            },
+                                                            contentPadding = PaddingValues(
+                                                                horizontal = 0.dp,
+                                                                vertical = 2.dp
+                                                            )
+                                                        ) {
+                                                            Text(
+                                                                text = "↩ Responder",
+                                                                color = AzulEscuroResposta,
+                                                                fontSize = 12.sp,
+                                                                fontWeight = FontWeight.SemiBold
+                                                            )
+                                                        }
+
+                                                        // Campo de resposta (aparece ao tocar em "Responder")
+                                                        if (estado.respondendoComentario == comentario.idComentario) {
+                                                            OutlinedTextField(
+                                                                value = estado.textoResposta,
+                                                                onValueChange = { viewModel.atualizarTextoResposta(it) },
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                enabled = !estado.enviandoResposta,
+                                                                placeholder = {
+                                                                    Text("Escreva sua resposta...")
+                                                                },
+                                                                shape = RoundedCornerShape(14.dp),
+                                                                colors = OutlinedTextFieldDefaults.colors(
+                                                                    focusedBorderColor = AzulPrincipal,
+                                                                    unfocusedBorderColor = BordaSuave,
+                                                                    cursorColor = MarromComunidade
+                                                                )
+                                                            )
+
+                                                            Row(
+                                                                modifier = Modifier.fillMaxWidth(),
+                                                                horizontalArrangement = Arrangement.End
+                                                            ) {
+                                                                TextButton(
+                                                                    onClick = { viewModel.cancelarResposta() },
+                                                                    enabled = !estado.enviandoResposta
+                                                                ) {
+                                                                    Text("Cancelar", color = TextoSecundario)
+                                                                }
+
+                                                                Button(
+                                                                    onClick = {
+                                                                        viewModel.enviarResposta(
+                                                                            context = context,
+                                                                            idPost = publicacao.idPost,
+                                                                            idComentario = comentario.idComentario
+                                                                        )
+                                                                    },
+                                                                    enabled = !estado.enviandoResposta,
+                                                                    shape = RoundedCornerShape(12.dp),
+                                                                    colors = ButtonDefaults.buttonColors(
+                                                                        containerColor = AzulPrincipal,
+                                                                        contentColor = MarromComunidade
+                                                                    )
+                                                                ) {
+                                                                    Text(
+                                                                        text = if (estado.enviandoResposta) "Enviando..." else "Responder",
+                                                                        fontWeight = FontWeight.SemiBold
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1074,6 +1222,69 @@ fun TelaComunidade(
                 }
             }
         }
+    }
+
+    if (publicacaoParaDenunciar != null) {
+        AlertDialog(
+            onDismissRequest = { publicacaoParaDenunciar = null },
+            title = { Text("Denunciar publicação") },
+            text = {
+                Column {
+                    Text(
+                        text = "Conte o motivo. Um administrador vai analisar a denúncia.",
+                        fontSize = 14.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    listOf(
+                        "Conteúdo ofensivo",
+                        "Spam",
+                        "Informação falsa",
+                        "Outro motivo"
+                    ).forEach { opcao ->
+                        TextButton(
+                            onClick = { motivoDenuncia = opcao },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) {
+                            Text(
+                                text = if (motivoDenuncia == opcao) "● $opcao" else "○ $opcao",
+                                color = MarromComunidade
+                            )
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = motivoDenuncia,
+                        onValueChange = { motivoDenuncia = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Motivo") },
+                        shape = RoundedCornerShape(14.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = motivoDenuncia.isNotBlank(),
+                    onClick = {
+                        val idPost = publicacaoParaDenunciar
+
+                        if (idPost != null) {
+                            viewModel.denunciarPublicacao(context, idPost, motivoDenuncia)
+                        }
+
+                        publicacaoParaDenunciar = null
+                    }
+                ) {
+                    Text("Enviar denúncia")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { publicacaoParaDenunciar = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     if (publicacaoParaExcluir != null) {

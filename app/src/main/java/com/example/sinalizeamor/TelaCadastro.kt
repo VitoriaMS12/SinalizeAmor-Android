@@ -35,8 +35,13 @@ import com.example.sinalizeamor.ui.viewmodel.CadastroViewModel
 @Composable
 fun TelaCadastro(
     onVoltar: () -> Unit,
+    onCadastroConcluido: (Usuario?, String?) -> Unit,
     cadastroViewModel: CadastroViewModel = viewModel()
 ) {
+    // Ao sair desta tela, os campos do cadastro são apagados.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { cadastroViewModel.limpar() }
+    }
 
     val estado by cadastroViewModel.uiState
 
@@ -195,7 +200,7 @@ fun TelaCadastro(
 
                 Button(
                     onClick = {
-                        cadastroViewModel.fazerCadastro()
+                        cadastroViewModel.fazerCadastro(onCadastroConcluido)
                     },
                     enabled = !carregando,
                     modifier = Modifier

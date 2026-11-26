@@ -22,6 +22,11 @@ class LoginViewModel : ViewModel() {
     var uiState = androidx.compose.runtime.mutableStateOf(LoginUiState())
         private set
 
+    // Volta os campos ao estado inicial (e-mail e senha vazios).
+    fun limpar() {
+        uiState.value = LoginUiState()
+    }
+
     fun atualizarEmail(email: String) {
         uiState.value = uiState.value.copy(
             email = email,

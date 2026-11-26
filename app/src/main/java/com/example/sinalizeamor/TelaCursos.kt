@@ -19,11 +19,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,8 +48,11 @@ fun TelaCursos(
     val mensagem = viewModel.mensagem
     val carregando = viewModel.carregando
 
+    val contexto = LocalContext.current
+    val nivel = viewModel.nivel
+
     LaunchedEffect(Unit) {
-        viewModel.carregarCursos()
+        viewModel.carregarCursos(TokenManager.obterToken(contexto))
     }
 
     Column(
@@ -80,7 +85,34 @@ fun TelaCursos(
             color = TextoCursos
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Nível do usuário.
+        if (!nivel.isNullOrBlank()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFFFFFDFB)
+                )
+            ) {
+                Text(
+                    text = "🏅 Seu nível: $nivel",
+                    modifier = Modifier.padding(14.dp),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MarromCursos
+                )
+            }
+        }
+
+        TextButton(onClick = { viewModel.carregarCursos(TokenManager.obterToken(contexto)) }) {
+            Text(
+                text = "↻ Atualizar cursos",
+                color = Color(0xFF397F9B),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         // Área rolável dos cursos e estados de carregamento.
         LazyColumn(
@@ -177,6 +209,14 @@ fun TelaCursos(
                                 color = TextoCursos,
                                 lineHeight = 22.sp
                             )
+                            if (curso.total_aulas > 0) {
+                                Text(
+                                    text = "✔ ${curso.aulas_concluidas} de ${curso.total_aulas} aulas concluídas",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color(0xFF397F9B)
+                                )
+                            }
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

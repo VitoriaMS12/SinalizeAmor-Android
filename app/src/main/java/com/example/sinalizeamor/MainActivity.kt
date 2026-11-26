@@ -2,11 +2,13 @@ package com.example.sinalizeamor
 
 // Importa recursos necessários do Android.
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 
 // Recursos do Jetpack Compose.
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,14 +71,19 @@ fun TelaInicial() {
 
     val context = LocalContext.current
 
+    // Se já existe uma sessão salva, o app abre direto na tela principal.
+    val usuarioSalvo = remember { TokenManager.obterUsuario(context) }
+    val tokenSalvo = remember { TokenManager.obterToken(context) }
+    val sessaoSalva = usuarioSalvo != null && !tokenSalvo.isNullOrBlank()
+
     // Guarda qual tela deve ser exibida.
     var telaAtual by remember {
-        mutableStateOf("inicio")
+        mutableStateOf(if (sessaoSalva) "principal" else "inicio")
     }
 
     // Guarda os dados do usuario que fez login.
     var usuarioLogado by remember {
-        mutableStateOf<Usuario?>(null)
+        mutableStateOf<Usuario?>(if (sessaoSalva) usuarioSalvo else null)
     }
 
     // Guarda o ID do curso que o usuario escolheu.
@@ -92,6 +99,35 @@ fun TelaInicial() {
 // Guarda o título do módulo escolhido.
     var tituloModuloSelecionado by remember {
         mutableStateOf("")
+    }
+
+    // Se o servidor recusar o token (401), volta para o login.
+    if (Sessao.expirada) {
+        LaunchedEffect(Unit) {
+            TokenManager.removerToken(context)
+            usuarioLogado = null
+            telaAtual = "login"
+            Sessao.expirada = false
+
+            Toast.makeText(
+                context,
+                "Sua sessão expirou. Entre novamente.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Botão voltar do celular: funciona igual ao botão "Voltar" do app.
+    // Nas telas "inicio" e "principal" ele fecha o app normalmente.
+    androidx.activity.compose.BackHandler(
+        enabled = telaAtual != "inicio" && telaAtual != "principal"
+    ) {
+        telaAtual = when (telaAtual) {
+            "login", "cadastro" -> "inicio"
+            "modulos" -> "cursos"
+            "aulas" -> "modulos"
+            else -> "principal" // cursos, perfil e comunidade
+        }
     }
 
     // Verifica qual tela deve aparecer.
@@ -238,6 +274,7 @@ fun TelaInicial() {
                             usuarioLogado = usuario
                             TokenManager.salvarToken(context, token)
                             TokenManager.salvarIdUsuario(context, usuario.id_usuario)
+                            TokenManager.salvarUsuario(context, usuario)
                             telaAtual = "principal"
                         }
                     )
@@ -253,6 +290,24 @@ fun TelaInicial() {
                 onVoltar = {
                     // Volta para a tela inicial.
                     telaAtual = "inicio"
+                },
+                onCadastroConcluido = { usuario, token ->
+                    if (usuario != null && token != null) {
+                        // Conta criada: já entra logado.
+                        usuarioLogado = usuario
+                        TokenManager.salvarToken(context, token)
+                        TokenManager.salvarIdUsuario(context, usuario.id_usuario)
+                        TokenManager.salvarUsuario(context, usuario)
+                        telaAtual = "principal"
+                    } else {
+                        // Conta criada, mas o login automático falhou: vai para o login.
+                        Toast.makeText(
+                            context,
+                            "Conta criada! Entre com seu e-mail e senha.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        telaAtual = "login"
+                    }
                 }
             )
         }
@@ -446,6 +501,11 @@ fun TelaInicial() {
                     TokenManager.removerToken(context)
                     usuarioLogado = null
                     telaAtual = "inicio"
+                },
+                onFotoAtualizada = { novaFoto ->
+                    // Mantém a foto nova na memória e no armazenamento do app.
+                    usuarioLogado = usuarioLogado?.copy(foto_perfil = novaFoto)
+                    usuarioLogado?.let { TokenManager.salvarUsuario(context, it) }
                 }
             )
         }

@@ -9,6 +9,9 @@ data class CursoResponse(
     // Mensagem enviada pelo PHP.
     val mensagem: String,
 
+    // Nível do usuário (Iniciante, Intermediário ou Avançado).
+    val nivel: String? = null,
+
     // Lista de cursos encontrados.
     val cursos: List<Curso>
 )
@@ -21,5 +24,9 @@ data class Curso(
     val descricao: String,
     val imagem: String?,
     val ativo: Int,
-    val data_criacao: String
+    val data_criacao: String,
+
+    // Progresso do usuário no curso.
+    val total_aulas: Int = 0,
+    val aulas_concluidas: Int = 0
 )

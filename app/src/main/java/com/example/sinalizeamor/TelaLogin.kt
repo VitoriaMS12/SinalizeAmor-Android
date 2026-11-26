@@ -30,6 +30,11 @@ fun TelaLogin(
     onLoginSucesso: (Usuario, String) -> Unit,
     loginViewModel: LoginViewModel = viewModel()
 ) {
+    // Ao sair desta tela (voltar, login feito ou sair da conta),
+    // e-mail e senha são apagados.
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { loginViewModel.limpar() }
+    }
     val estado by loginViewModel.uiState
 
     Column(

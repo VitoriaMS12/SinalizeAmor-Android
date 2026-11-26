@@ -3,7 +3,9 @@ package com.example.sinalizeamor.ui.viewmodel
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.sinalizeamor.Usuario
 import com.example.sinalizeamor.ValidadorEmail
+import com.example.sinalizeamor.data.repository.LoginRepository
 import com.example.sinalizeamor.data.repository.CadastroRepository
 import kotlinx.coroutines.launch
 
@@ -59,7 +61,14 @@ class CadastroViewModel : ViewModel() {
         )
     }
 
-    fun fazerCadastro() {
+    // Volta os campos ao estado inicial.
+    fun limpar() {
+        uiState.value = CadastroUiState()
+    }
+
+    // onConcluido recebe o usuário e o token se o login automático funcionar;
+    // se não funcionar, recebe null e o app leva a pessoa para a tela de login.
+    fun fazerCadastro(onConcluido: (Usuario?, String?) -> Unit) {
         val estado = uiState.value
 
         if (
@@ -100,9 +109,32 @@ class CadastroViewModel : ViewModel() {
                     senha = estado.senha
                 )
 
-                uiState.value = uiState.value.copy(
-                    mensagem = resposta.mensagem
-                )
+                if (resposta.sucesso) {
+                    var usuario: Usuario? = null
+                    var token: String? = null
+
+                    // Entra automaticamente com a conta recém-criada.
+                    try {
+                        val login = LoginRepository().fazerLogin(
+                            email = estado.email.trim().lowercase(),
+                            senha = estado.senha
+                        )
+
+                        if (login.sucesso) {
+                            usuario = login.usuario
+                            token = login.token
+                        }
+                    } catch (e: Exception) {
+                        // Se falhar, a pessoa será levada para a tela de login.
+                    }
+
+                    uiState.value = CadastroUiState()
+                    onConcluido(usuario, token)
+                } else {
+                    uiState.value = uiState.value.copy(
+                        mensagem = resposta.mensagem
+                    )
+                }
             } catch (e: Exception) {
                 uiState.value = uiState.value.copy(
                     mensagem = "Não foi possível concluir o cadastro. Verifique a conexão e tente novamente."

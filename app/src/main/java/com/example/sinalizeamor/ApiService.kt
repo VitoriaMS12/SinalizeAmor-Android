@@ -71,7 +71,9 @@ interface ApiService {
 
     // Busca os cursos cadastrados no banco de dados.
     @GET("tcc%20(2)/tcc/control/cursosApp.php")
-    suspend fun buscarCursos(): CursoResponse
+    suspend fun buscarCursos(
+        @Header("Authorization") token: String?
+    ): CursoResponse
 
     // Busca os modulos de um curso especifico.
     @GET("tcc%20(2)/tcc/control/modulosApp.php")
@@ -79,7 +81,36 @@ interface ApiService {
 
     // Busca as aulas de modulo especifico.
     @GET("tcc%20(2)/tcc/control/aulasApp.php")
-    suspend fun buscarAulas(@Query("id_modulo") idModulo: Int): AulaResponse
+    suspend fun buscarAulas(
+        @Query("id_modulo") idModulo: Int,
+        @Header("Authorization") token: String?
+    ): AulaResponse
+
+    // Marca uma aula como concluída.
+    @FormUrlEncoded
+    @POST("tcc%20(2)/tcc/control/concluirAulaApp.php")
+    suspend fun concluirAula(
+        @Header("Authorization") token: String,
+        @Field("id_aula") idAula: Int
+    ): RespostaSimples
+
+    // Responde um comentário.
+    @FormUrlEncoded
+    @POST("tcc%20(2)/tcc/control/respostaApp.php")
+    suspend fun responderComentario(
+        @Header("Authorization") token: String,
+        @Field("id_comentario") idComentario: Int,
+        @Field("resposta") resposta: String
+    ): ComentarioResposta
+
+    // Denuncia uma publicação (o administrador analisa no site).
+    @FormUrlEncoded
+    @POST("tcc%20(2)/tcc/control/denunciarApp.php")
+    suspend fun denunciarPublicacao(
+        @Header("Authorization") token: String,
+        @Field("id_post") idPost: Int,
+        @Field("motivo") motivo: String
+    ): RespostaSimples
 
     @GET("tcc%20(2)/tcc/control/comunidadeApp.php")
     suspend fun buscarPublicacoes(

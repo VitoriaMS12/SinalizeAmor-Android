@@ -57,7 +57,8 @@ import androidx.compose.runtime.LaunchedEffect
 fun TelaPerfil(
     usuario: Usuario?,
     onVoltar: () -> Unit,
-    onSair: () -> Unit
+    onSair: () -> Unit,
+    onFotoAtualizada: (String?) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -168,7 +169,7 @@ fun TelaPerfil(
                         ) {
                             fotoServidor!!
                         } else {
-                            "http://192.168.1.5/tcc%20(2)/tcc/uploads/perfils/$fotoServidor"
+                            "${Config.BASE_HTTP}${Config.PASTA_SITE}uploads/perfils/$fotoServidor"
                         }
 
                         AsyncImage(
@@ -263,6 +264,7 @@ fun TelaPerfil(
 
                                     // Atualiza o nome da foto retornado pelo PHP.
                                     fotoServidor = resposta.foto_perfil
+                                    onFotoAtualizada(resposta.foto_perfil)
 
                                     // Remove a prévia local para exibir a foto do servidor.
                                     fotoPerfil = null

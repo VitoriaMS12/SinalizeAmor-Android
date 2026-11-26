@@ -20,7 +20,10 @@ data class Aula(
     val ordem: Int,
     val data_criacao: String?,
     val data_atualizacao: String?,
-    val materiais: List<MaterialAula> = emptyList()
+    val materiais: List<MaterialAula> = emptyList(),
+
+    // 1 quando o usuário já concluiu a aula.
+    val concluida: Int = 0
 )
 
 // Representa um material vinculado a uma aula.

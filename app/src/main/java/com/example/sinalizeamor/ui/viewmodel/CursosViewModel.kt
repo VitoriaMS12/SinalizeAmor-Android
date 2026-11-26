@@ -25,16 +25,22 @@ class CursosViewModel : ViewModel(){
     var carregando by mutableStateOf(true)
         private set
 
-    fun carregarCursos() {
+    // Nível do usuário (vem do servidor).
+    var nivel by mutableStateOf<String?>(null)
+        private set
+
+    fun carregarCursos(token: String?) {
         viewModelScope.launch {
             carregando = true
             mensagem = "Carregando cursos..."
 
             try {
-                val resposta = repository.buscarCursos()
+                val resposta = repository.buscarCursos(token)
 
                 if (resposta.sucesso) {
-                    cursos = resposta.cursos
+                    // Mostra somente os cursos ativos (o admin pode desativar pelo site).
+                    nivel = resposta.nivel
+                    cursos = resposta.cursos.filter { it.ativo == 1 }
                     mensagem = if (cursos.isEmpty()) {
                         "Nenhum curso disponível."
                     } else {
